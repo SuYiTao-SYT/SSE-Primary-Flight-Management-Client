@@ -4,6 +4,8 @@
 #include <QMainWindow>
 #include <QMap>
 #include <QJsonObject>
+#include <QStackedWidget>
+#include <QLineEdit>
 #include "DataTypes.h"
 
 class MainWindow : public QMainWindow
@@ -15,16 +17,26 @@ public:
     ~MainWindow();
 
 private slots:
-    // 处理网络数据的槽函数
     void onDataReceived(const QJsonObject &json);
-    
-    // 连接成功后自动执行的逻辑
     void onServerConnected();
+
+    // 按钮点击处理槽函数
+    void onLoginClicked();
+    void onRegisterClicked();
 
 private:
     void setupUi();
+    void initLoginPage(); // 初始化登录页
+    void initMainPage();  // 初始化主功能页
 
-    // 本地机场缓存：IATA->机场详情
+    QStackedWidget *m_stackedWidget; // 页面管理器
+
+    // 登录页控件
+    QLineEdit *m_userEdit;
+    QLineEdit *m_passEdit;
+
+    // 运行时数据
+    int m_userId = -1; // -1 表示未登录
     QMap<QString, AirportInfo> m_airportCache;
 };
 
