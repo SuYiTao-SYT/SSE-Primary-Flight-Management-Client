@@ -24,6 +24,11 @@ private slots:
     void onLoginClicked();
     void onRegisterClicked();
 
+    // 点击查询
+    void onSearchClicked();      
+    // 处理购买逻辑     
+    void onBuyTicket(int flightId);   
+
 private:
     void setupUi();
     void initLoginPage(); // 初始化登录页
@@ -38,6 +43,10 @@ private:
     // 运行时数据
     int m_userId = -1; // -1 表示未登录
     QMap<QString, AirportInfo> m_airportCache;
+
+    QLineEdit *m_srcCityEdit;   // 出发地输入框
+    QLineEdit *m_destCityEdit;  // 目的地输入框
+    QWidget *m_flightListContainer; // FlightItem容器
 };
 
 #endif // MAINWINDOW_H

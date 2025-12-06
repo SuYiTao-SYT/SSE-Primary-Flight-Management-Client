@@ -20,6 +20,8 @@ set(PROJECT_SOURCES
         src/mainwindow.h
         src/NetworkClient.cpp
         src/NetworkClient.h
+        src/FlightItem.cpp
+        src/FlightItem.h
         ${TS_FILES}
 )
 

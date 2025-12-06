@@ -1,9 +1,11 @@
 #include "MainWindow.h"
 #include "NetworkClient.h"
+#include "FlightItem.h"
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QMessageBox>
+#include <QScrollArea>
 #include <QDebug>
 #include <QJsonArray>
 
@@ -85,19 +87,49 @@ void MainWindow::initLoginPage()
     m_stackedWidget->addWidget(loginPage);
 }
 
+
+
 void MainWindow::initMainPage()
 {
     QWidget *mainPage = new QWidget();
     QVBoxLayout *layout = new QVBoxLayout(mainPage);
 
-    QLabel *label = new QLabel("主功能区（开发中...）");
-    label->setAlignment(Qt::AlignCenter);
+    // 顶部查询栏
+    QHBoxLayout *searchLayout = new QHBoxLayout();
     
-    layout->addWidget(label);
+    m_srcCityEdit = new QLineEdit();
+    m_srcCityEdit->setPlaceholderText("出发城市 (如: 北京)");
+    
+    m_destCityEdit = new QLineEdit();
+    m_destCityEdit->setPlaceholderText("到达城市 (如: 上海)");
+    
+    QPushButton *btnSearch = new QPushButton("查询航班");
+    connect(btnSearch, &QPushButton::clicked, this, &MainWindow::onSearchClicked);
 
-    // 将页面加入堆栈
+    searchLayout->addWidget(new QLabel("从:"));
+    searchLayout->addWidget(m_srcCityEdit);
+    searchLayout->addWidget(new QLabel("到:"));
+    searchLayout->addWidget(m_destCityEdit);
+    searchLayout->addWidget(btnSearch);
+
+    // 滚动列表区域
+    QScrollArea *scrollArea = new QScrollArea();
+    scrollArea->setWidgetResizable(true); // 让内部控件随窗口调整大小
+
+    // 创建一个 Widget 作为容器，用来垂直排列所有航班卡片
+    m_flightListContainer = new QWidget(); 
+    QVBoxLayout *listLayout = new QVBoxLayout(m_flightListContainer);
+    listLayout->setAlignment(Qt::AlignTop); // 让条目靠上对齐，不要分散
+    
+    scrollArea->setWidget(m_flightListContainer);
+
+    // 组装
+    layout->addLayout(searchLayout);
+    layout->addWidget(scrollArea);
+
     m_stackedWidget->addWidget(mainPage);
 }
+
 
 // 点击登录
 void MainWindow::onLoginClicked()
@@ -160,16 +192,15 @@ void MainWindow::onDataReceived(const QJsonObject &json)
         }
         qDebug() << "机场数据已更新:" << m_airportCache.size();
     }
-    // 处理登录结果
+    //处理登录结果
     else if (type == "login_res") {
         bool success = json["result"].toBool();
         QString msg = json["message"].toString();
 
         if (success) {
             m_userId = json["user_id"].toInt();
-            // 切换到主界面
-            m_stackedWidget->setCurrentIndex(1);
-            this->resize(800, 600); // 登录成功后放大窗口
+            m_stackedWidget->setCurrentIndex(1); // 切到主页
+            this->resize(800, 600);
             this->setWindowTitle("购票系统 - " + m_userEdit->text());
         } else {
             QMessageBox::critical(this, "登录失败", msg);
@@ -186,4 +217,76 @@ void MainWindow::onDataReceived(const QJsonObject &json)
             QMessageBox::warning(this, "注册失败", msg);
         }
     }
+    // 处理航班查询结果
+    else if (type == "search_flights_res") {
+        // 清空列表
+        qDeleteAll(m_flightListContainer->findChildren<QWidget*>(Qt::FindDirectChildrenOnly));
+
+        QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(m_flightListContainer->layout());
+        QJsonArray flights = json["flights"].toArray();
+        
+        if (flights.isEmpty()) {
+            QMessageBox::information(this, "提示", "未查询到航班");
+            return;
+        }
+
+        for (const auto &val : flights) {
+            QJsonObject f = val.toObject();
+            
+            // IATA 转中文
+            QString srcIata = f["src_iata"].toString();
+            QString destIata = f["dest_iata"].toString();
+            QString srcName = m_airportCache.contains(srcIata) ? m_airportCache[srcIata].name : srcIata;
+            QString destName = m_airportCache.contains(destIata) ? m_airportCache[destIata].name : destIata;
+
+            FlightItem *item = new FlightItem(f, srcName, destName);
+            connect(item, &FlightItem::purchaseClicked, this, &MainWindow::onBuyTicket);
+            layout->addWidget(item);
+        }
+    }
+    // 处理购票结果
+    else if (type == "buy_ticket_res") {
+        bool success = json["result"].toBool();
+        QString msg = json["message"].toString();
+        
+        if (success) {
+            QMessageBox::information(this, "恭喜", "购票成功！\n请在'我的订单'中查看。");
+            onSearchClicked(); // 刷新列表
+        } else {
+            QMessageBox::warning(this, "失败", "购票失败: " + msg);
+        }
+    }
+}
+// 点击查询按钮
+void MainWindow::onSearchClicked()
+{
+    QString src = m_srcCityEdit->text().trimmed();
+    QString dest = m_destCityEdit->text().trimmed();
+
+    if (src.isEmpty() || dest.isEmpty()) {
+        QMessageBox::warning(this, "提示", "请输入出发地和目的地");
+        return;
+    }
+
+    // 发送请求
+    QJsonObject req;
+    req["type"] = "search_flights";
+    req["src_city"] = src;
+    req["dest_city"] = dest;
+    req["date"] = "2023-12-25"; // 暂时写死，后续可以加 DateEdit
+    
+    NetworkClient::instance().sendRequest(req);
+    
+    // 清空旧列表
+}
+
+// 处理购买请求
+void MainWindow::onBuyTicket(int flightId)
+{
+    QJsonObject req;
+    req["type"] = "buy_ticket";
+    req["user_id"] = m_userId;
+    req["flight_id"] = flightId;
+    
+    NetworkClient::instance().sendRequest(req);
 }
