@@ -226,7 +226,7 @@ flights_db = [
         "id": 516, "flight_no": "MANDEL-X",
         "src_iata": "BKS", "dest_iata": "ZDM",
         "dep_time": "2023-12-26 23:00", "arr_time": "2023-12-26 23:30",
-        "price": 5000, "tickets_left": 1 # 极密任务
+        "price": 5001, "tickets_left": 1 # 极密任务
     }
 ]
 
