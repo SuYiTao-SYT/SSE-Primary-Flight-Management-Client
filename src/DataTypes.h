@@ -8,6 +8,7 @@ struct AirportInfo{
     QString iata;
     QString city;
     QString name;
+    QString pinyin;
 };
 
 #endif

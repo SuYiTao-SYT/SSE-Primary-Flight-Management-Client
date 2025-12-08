@@ -3,9 +3,12 @@
 
 #include <QMainWindow>
 #include <QMap>
+#include <QLabel>
 #include <QJsonObject>
 #include <QStackedWidget>
 #include <QLineEdit>
+#include <QPushButton>
+#include <QScrollArea>
 #include "DataTypes.h"
 
 class MainWindow : public QMainWindow
@@ -20,33 +23,52 @@ private slots:
     void onDataReceived(const QJsonObject &json);
     void onServerConnected();
 
-    // 按钮点击处理槽函数
+    // 按钮槽函数
     void onLoginClicked();
     void onRegisterClicked();
-
-    // 点击查询
-    void onSearchClicked();      
-    // 处理购买逻辑     
-    void onBuyTicket(int flightId);   
+    void onSearchClicked();         // 点击查询按钮
+    void onBuyTicket(int flightId); // 点击购买
+    
+    // 城市选择相关
+    void onSelectSrcCity();  // 点击“选择出发地”
+    void onSelectDestCity(); // 点击“选择目的地”
+    void onCitySelected(const QString &cityName); // 在列表里选中了某个城市
+    void onIndexLetterClicked(const QString &letter); // 点击右侧索引条
 
 private:
     void setupUi();
-    void initLoginPage(); // 初始化登录页
-    void initMainPage();  // 初始化主功能页
+    void initLoginPage();      // Page 0
+    void initSearchHomePage(); // Page 1: 查询主页
+    void initCitySelectPage(); // Page 2: 城市选择页
+    void initFlightListPage(); // Page 3: 航班列表页
 
-    QStackedWidget *m_stackedWidget; // 页面管理器
+    // 重新根据 m_airportCache 渲染城市列表
+    void renderCityList(); 
+
+    QStackedWidget *m_stackedWidget;
 
     // 登录页控件
     QLineEdit *m_userEdit;
     QLineEdit *m_passEdit;
 
-    // 运行时数据
-    int m_userId = -1; // -1 表示未登录
-    QMap<QString, AirportInfo> m_airportCache;
+    // 查询主页控件
+    QPushButton *m_btnSrcCity;  // 显示当前选中的出发地
+    QPushButton *m_btnDestCity; // 显示当前选中的目的地
 
-    QLineEdit *m_srcCityEdit;   // 出发地输入框
-    QLineEdit *m_destCityEdit;  // 目的地输入框
-    QWidget *m_flightListContainer; // FlightItem容器
+    // 城市选择页控件
+    QWidget *m_cityListContainer; // 放城市按钮的容器
+    QMap<QString, QLabel*> m_letterLabels;
+    QScrollArea *m_cityScrollArea; // 首字母跳转
+
+    // 航班列表页控件
+    QWidget *m_flightListContainer; 
+
+    // 运行时数据
+    int m_userId = -1;
+    QMap<QString, AirportInfo> m_airportCache;
+    
+    // 状态标志：true表示正在选出发地，false表示正在选目的地
+    bool m_isSelectingSrc = true; 
 };
 
-#endif // MAINWINDOW_H
+#endif 
