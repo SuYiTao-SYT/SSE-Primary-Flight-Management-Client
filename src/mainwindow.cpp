@@ -12,6 +12,7 @@
 #include <QJsonArray>
 #include <QScrollBar>
 #include <QGroupBox>
+#include <QDateTime>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -390,10 +391,9 @@ void MainWindow::onDataReceived(const QJsonObject &json)
         }
     }
     else if (type == "search_flights_res") {
-        // 切换到航班列表页
         m_stackedWidget->setCurrentIndex(3);
         
-        // 清空容器
+        // 清空 UI
         qDeleteAll(m_flightListContainer->findChildren<QWidget*>(Qt::FindDirectChildrenOnly));
         QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(m_flightListContainer->layout());
 
@@ -402,25 +402,46 @@ void MainWindow::onDataReceived(const QJsonObject &json)
             QLabel *empty = new QLabel("暂无航班");
             empty->setAlignment(Qt::AlignCenter);
             layout->addWidget(empty);
-        } else {
-            for (const auto &val : flights) {
-                QJsonObject f = val.toObject();
-                // IATA 转中文逻辑同前
-                QString srcName = f["src_iata"].toString(); // 简化展示，可用 cache 转换
-                QString destName = f["dest_iata"].toString();
-                if(m_airportCache.contains(srcName)) srcName = m_airportCache[srcName].name;
-                if(m_airportCache.contains(destName)) destName = m_airportCache[destName].name;
+            return;
+        }
 
-                FlightItem *item = new FlightItem(f, srcName, destName);
-                connect(item, &FlightItem::purchaseClicked, this, &MainWindow::onBuyTicket);
-                layout->addWidget(item);
-            }
+        for (const auto &val : flights) {
+            QJsonObject f = val.toObject();
+            
+            // 解析数据，转存到 Struct 中
+            FlightInfo info;
+            info.id = f["id"].toInt();
+            info.flightNo = f["flight_no"].toString(); // 确保 Python 服务器发了这个字段
+            info.srcIata = f["src_iata"].toString();
+            info.destIata = f["dest_iata"].toString();
+            info.price = f["price"].toDouble();
+            info.ticketsLeft = f["tickets_left"].toInt();
+
+            // 格式必须与 Python 发送的 "2023-12-25 08:00" 匹配
+            info.depTime = QDateTime::fromString(f["dep_time"].toString(), "yyyy-MM-dd HH:mm");
+            info.arrTime = QDateTime::fromString(f["arr_time"].toString(), "yyyy-MM-dd HH:mm");
+
+            // 获取城市中文名用于显示
+            QString srcName = m_airportCache.contains(info.srcIata) ? m_airportCache[info.srcIata].name : info.srcIata;
+            QString destName = m_airportCache.contains(info.destIata) ? m_airportCache[info.destIata].name : info.destIata;
+
+            // 传入处理好的结构体
+            FlightItem *item = new FlightItem(info, srcName, destName);
+            connect(item, &FlightItem::purchaseClicked, this, &MainWindow::onBuyTicket);
+            layout->addWidget(item);
         }
     }
     else if (type == "buy_ticket_res") {
-        // 简单的弹窗反馈
-        if(json["result"].toBool()) QMessageBox::information(this, "Success", "购票成功!");
-        else QMessageBox::warning(this, "Fail", json["message"].toString());
+        bool success = json["result"].toBool();
+        QString msg = json["message"].toString();
+
+        if (success) {
+            QMessageBox::information(this, "恭喜", "购票成功！");
+            onSearchClicked(); 
+            
+        } else {
+            QMessageBox::warning(this, "失败", "购票失败: " + msg);
+        }
     }
 }
 
