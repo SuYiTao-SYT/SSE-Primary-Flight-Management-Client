@@ -244,6 +244,8 @@ def send_packet(conn, json_data):
 
 def handle_client(conn, addr):
     print(f"✅ 新连接: {addr}")
+
+
     try:
         while True:
             # 1. 读取头部 (4字节)
@@ -365,7 +367,34 @@ def handle_client(conn, addr):
                             })
                 
                 response = {"type": "my_orders_res", "orders": my_list}
+            
 
+            # --- G. 修改密码 ---
+            elif req_type == "change_password":
+                u_id = req.get('user_id')
+                old_pass = req.get('old_pass')
+                new_pass = req.get('new_pass')
+
+                # 在内存列表 users_db 中查找匹配的用户
+                # 我们需要找到 id 和 password 都匹配的那个字典对象
+                target_user = None
+                
+                for user in users_db:
+                    if user['id'] == u_id and user['password'] == old_pass:
+                        target_user = user
+                        break
+                
+                # 根据查找结果处理
+                if target_user:
+                    # 直接修改内存中的字典对象
+                    target_user['password'] = new_pass
+                    print(f"🔑 用户 {target_user['username']} 密码已更新")
+                    
+                    response = {"type": "change_password_res", "result": True, "message": "密码修改成功！"}
+                else:
+                    response = {"type": "change_password_res", "result": False, "message": "旧密码错误"}
+            
+            
             else:
                 print(f"⚠️ 未知类型: {req_type}")
                 continue
@@ -376,6 +405,7 @@ def handle_client(conn, addr):
     except Exception as e:
         print(f"❌ 发生错误: {e}")
     finally:
+        conn_db.close()  # 关闭数据库连接
         conn.close()
         print(f"🔒 连接断开: {addr}")
 

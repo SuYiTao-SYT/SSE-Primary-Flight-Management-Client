@@ -29,7 +29,10 @@ private slots:
     void onSearchClicked();         // 点击查询按钮
     void onBuyTicket(int flightId); // 点击购买
     
-    // 城市选择相关
+    // 修改密码按钮点击
+    void onChangePasswordClicked(); 
+
+    //  城市选择相关
     void onSelectSrcCity();  // 点击“选择出发地”
     void onSelectDestCity(); // 点击“选择目的地”
     void onCitySelected(const QString &cityName); // 在列表里选中了某个城市
@@ -41,9 +44,14 @@ private:
     void initSearchHomePage(); // Page 1: 查询主页
     void initCitySelectPage(); // Page 2: 城市选择页
     void initFlightListPage(); // Page 3: 航班列表页
+    void initPersonalCenterPage(); // Page 4: 个人中心页
 
+    
     // 重新根据 m_airportCache 渲染城市列表
-    void renderCityList(); 
+    void renderCityList();
+
+    // 处理密码修改的核心业务逻辑 (校验 + 发送)
+    void handlePasswordChange(const QString &oldPass, const QString &newPass, const QString &confirmPass);
 
     QStackedWidget *m_stackedWidget;
 
@@ -61,9 +69,13 @@ private:
     QScrollArea *m_cityScrollArea; // 首字母跳转
 
     // 航班列表页控件
-    QWidget *m_flightListContainer; 
+    QWidget *m_flightListContainer;
 
-    // 运行时数据
+    // 个人中心页控件
+    // 需要保存这个指针，以便在进入个人中心时更新 "当前账号: xxx"
+    QLabel *m_lblCenterUser; 
+
+
     int m_userId = -1;
     QMap<QString, AirportInfo> m_airportCache;
     
@@ -71,4 +83,4 @@ private:
     bool m_isSelectingSrc = true; 
 };
 
-#endif 
+#endif

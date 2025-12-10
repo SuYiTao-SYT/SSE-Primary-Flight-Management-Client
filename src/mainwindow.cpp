@@ -38,6 +38,7 @@ void MainWindow::setupUi()
     initSearchHomePage();  // Index 1
     initCitySelectPage();  // Index 2
     initFlightListPage();  // Index 3
+    initPersonalCenterPage(); // Index 4
 
     m_stackedWidget->setCurrentIndex(0);
 }
@@ -79,13 +80,34 @@ void MainWindow::initLoginPage()
 void MainWindow::initSearchHomePage()
 {
     QWidget *page = new QWidget();
+
+    //主垂直布局
     QVBoxLayout *layout = new QVBoxLayout(page);
     layout->setContentsMargins(20, 40, 20, 20);
 
-    // 顶部标题
+    //创建顶部水平栏
+    QHBoxLayout *topBar = new QHBoxLayout();
+
     QLabel *title = new QLabel("航班查询");
     title->setStyleSheet("font-size: 22px; font-weight: bold;");
-    layout->addWidget(title);
+
+    QPushButton *btnMine = new QPushButton("个人中心");
+    btnMine->setFixedSize(80, 30);
+    btnMine->setStyleSheet("background-color: #0078d7; color: white; border-radius: 5px; font-size: 12px;");
+
+    // 连接跳转信号
+    connect(btnMine, &QPushButton::clicked, this, [this](){
+        if(m_lblCenterUser) {
+            m_lblCenterUser->setText("当前账号: " + m_userEdit->text());
+        }
+        m_stackedWidget->setCurrentIndex(4);
+    });
+
+    topBar->addWidget(title);
+    topBar->addStretch();
+    topBar->addWidget(btnMine);
+    
+    layout->addLayout(topBar);
     layout->addSpacing(30);
 
     // 选择区域容器
@@ -98,7 +120,7 @@ void MainWindow::initSearchHomePage()
     m_btnSrcCity->setStyleSheet("text-align: left; font-size: 20px; font-weight: bold; padding: 10px; border: none;");
     QLabel *lblSrc = new QLabel("出发城市");
     lblSrc->setStyleSheet("color: #888; font-size: 12px; margin-left: 10px;");
-    
+
     // 目的地按钮
     m_btnDestCity = new QPushButton("上海"); // 默认值
     m_btnDestCity->setStyleSheet("text-align: left; font-size: 20px; font-weight: bold; padding: 10px; border: none;");
@@ -121,6 +143,7 @@ void MainWindow::initSearchHomePage()
 
     // 查询按钮
     QPushButton *btnSearch = new QPushButton("查询航班");
+
     btnSearch->setStyleSheet("background-color: #ffaa00; color: white; font-size: 18px; padding: 12px; border-radius: 8px; font-weight: bold;");
     layout->addWidget(btnSearch);
     layout->addStretch();
@@ -221,7 +244,124 @@ void MainWindow::initFlightListPage()
     m_stackedWidget->addWidget(page);
 }
 
-// 核心逻辑部分
+// Page 4: 个人中心页
+void MainWindow::initPersonalCenterPage()
+{
+    QWidget *page = new QWidget();
+    QVBoxLayout *layout = new QVBoxLayout(page);
+    layout->setContentsMargins(0, 0, 0, 0);
+
+    //顶部导航栏 (带标题)
+    QWidget *navBar = new QWidget();
+    navBar->setStyleSheet("background: #f8f8f8; border-bottom: 1px solid #ddd;");
+    navBar->setFixedHeight(50);
+    QHBoxLayout *navLayout = new QHBoxLayout(navBar);
+    
+    QLabel *title = new QLabel("个人中心");
+    title->setStyleSheet("font-size: 18px; font-weight: bold; color: #333;");
+    title->setAlignment(Qt::AlignCenter);
+    navLayout->addWidget(title); // 居中标题
+    
+    layout->addWidget(navBar);
+
+    //内容区域容器
+    QWidget *contentWidget = new QWidget();
+    QVBoxLayout *contentLayout = new QVBoxLayout(contentWidget);
+    contentLayout->setContentsMargins(30, 40, 30, 40);
+    contentLayout->setSpacing(20);
+
+    //头像占位符
+    QLabel *avatar = new QLabel("👤");
+    avatar->setAlignment(Qt::AlignCenter);
+    avatar->setStyleSheet("font-size: 60px; background: #eee; border-radius: 40px;");
+    avatar->setFixedSize(80, 80);
+    
+    //用户名显示
+    m_lblCenterUser = new QLabel("当前账号: --");
+    m_lblCenterUser->setAlignment(Qt::AlignCenter);
+    m_lblCenterUser->setStyleSheet("font-size: 18px; color: #555; font-weight: bold;");
+
+    //修改密码按钮
+    QPushButton *btnChangePwd = new QPushButton("修改密码");
+    btnChangePwd->setFixedHeight(45);
+    btnChangePwd->setStyleSheet("background-color: white; border: 1px solid #ddd; border-radius: 5px; color: #333; font-size: 16px;");
+
+    //修改密码
+    connect(btnChangePwd, &QPushButton::clicked, this, [this](){
+        //创建对话框
+        QDialog dlg(this);
+        dlg.setWindowTitle("修改密码");
+        dlg.setFixedSize(300, 280);
+
+        //垂直布局
+        QVBoxLayout *dlgLayout = new QVBoxLayout(&dlg);
+        dlgLayout->setSpacing(10);
+
+        //创建输入控件
+        QLineEdit *editOld = new QLineEdit();
+        editOld->setPlaceholderText("请输入旧密码");
+        editOld->setEchoMode(QLineEdit::Password);
+
+        QLineEdit *editNew = new QLineEdit();
+        editNew->setPlaceholderText("请输入新密码");
+        editNew->setEchoMode(QLineEdit::Password);
+
+        QLineEdit *editConfirm = new QLineEdit();
+        editConfirm->setPlaceholderText("请再次输入新密码");
+        editConfirm->setEchoMode(QLineEdit::Password);
+
+        dlgLayout->addWidget(new QLabel("旧密码:"));
+        dlgLayout->addWidget(editOld);
+
+        dlgLayout->addWidget(new QLabel("新密码:"));
+        dlgLayout->addWidget(editNew);
+
+        dlgLayout->addWidget(new QLabel("确认密码:"));
+        dlgLayout->addWidget(editConfirm);
+
+        dlgLayout->addSpacing(10);
+
+        //按钮框
+        QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+        dlgLayout->addWidget(buttonBox);
+
+        //连接按钮信号
+        connect(buttonBox, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+        connect(buttonBox, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+        //执行并处理逻辑
+        if (dlg.exec() == QDialog::Accepted) {
+            QString oldPass = editOld->text();
+            QString newPass = editNew->text();
+            QString confirmPass = editConfirm->text();
+            handlePasswordChange(oldPass, newPass, confirmPass);
+        }
+    });
+
+    // 退出/返回按钮
+    QPushButton *btnBack = new QPushButton("返回查询");
+    btnBack->setFixedHeight(45);
+    btnBack->setStyleSheet("background-color: #f5f5f5; border: 1px solid #ccc; border-radius: 5px; color: #666; font-size: 16px;");
+    
+    connect(btnBack, &QPushButton::clicked, this, [this](){
+        m_stackedWidget->setCurrentIndex(1);
+    });
+
+    // 组装布局
+    contentLayout->addWidget(avatar, 0, Qt::AlignHCenter);
+    contentLayout->addWidget(m_lblCenterUser);
+    contentLayout->addSpacing(30);
+    contentLayout->addWidget(btnChangePwd);
+    contentLayout->addWidget(btnBack);
+    contentLayout->addStretch();
+
+    layout->addWidget(contentWidget);
+
+    m_stackedWidget->addWidget(page);
+}
+
+
+//核心逻辑部分
 
 void MainWindow::onServerConnected()
 {
@@ -443,6 +583,17 @@ void MainWindow::onDataReceived(const QJsonObject &json)
             QMessageBox::warning(this, "失败", "购票失败: " + msg);
         }
     }
+    else if (type == "change_password_res") {
+        bool success = json["result"].toBool();
+        QString msg = json["message"].toString();
+
+        if (success) {
+            QMessageBox::information(this, "成功", msg);
+            //修改成功后强制退出登录，或者清空密码框等
+        } else {
+            QMessageBox::critical(this, "失败", msg);
+        }
+    }
 }
 
 void MainWindow::onLoginClicked() {
@@ -452,4 +603,82 @@ void MainWindow::onLoginClicked() {
 void MainWindow::onRegisterClicked() {
     QJsonObject json{{"type", "register"}, {"username", m_userEdit->text()}, {"password", m_passEdit->text()}};
     NetworkClient::instance().sendRequest(json);
+}
+
+void MainWindow::onChangePasswordClicked()
+{
+    // 创建对话框
+    QDialog dlg(this);
+    dlg.setWindowTitle("修改密码");
+    dlg.setFixedSize(300, 280); 
+
+    QVBoxLayout *dlgLayout = new QVBoxLayout(&dlg);
+    dlgLayout->setSpacing(10); 
+
+    // 创建输入控件
+    QLineEdit *editOld = new QLineEdit(); 
+    editOld->setPlaceholderText("请输入旧密码");
+    editOld->setEchoMode(QLineEdit::Password);
+    
+    QLineEdit *editNew = new QLineEdit(); 
+    editNew->setPlaceholderText("请输入新密码");
+    editNew->setEchoMode(QLineEdit::Password);
+    
+    QLineEdit *editConfirm = new QLineEdit(); 
+    editConfirm->setPlaceholderText("请再次输入新密码");
+    editConfirm->setEchoMode(QLineEdit::Password);
+
+    // 添加布局
+    dlgLayout->addWidget(new QLabel("旧密码:"));
+    dlgLayout->addWidget(editOld);
+    dlgLayout->addWidget(new QLabel("新密码:"));
+    dlgLayout->addWidget(editNew);
+    dlgLayout->addWidget(new QLabel("确认密码:"));
+    dlgLayout->addWidget(editConfirm);
+    dlgLayout->addSpacing(10); 
+
+    // 按钮
+    QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    dlgLayout->addWidget(buttonBox);
+
+    connect(buttonBox, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    // 如果用户点击确定，获取数据并转交给处理函数
+    if (dlg.exec() == QDialog::Accepted) {
+        QString oldPass = editOld->text();
+        QString newPass = editNew->text();
+        QString confirmPass = editConfirm->text();
+
+        // 调用业务逻辑函数
+        handlePasswordChange(oldPass, newPass, confirmPass);
+    }
+}
+
+void MainWindow::handlePasswordChange(const QString &oldPass, const QString &newPass, const QString &confirmPass)
+{
+    //前端校验
+    if (oldPass.isEmpty() || newPass.isEmpty()) {
+        QMessageBox::warning(this, "提示", "密码不能为空");
+        return;
+    }
+
+    if (newPass != confirmPass) {
+        QMessageBox::warning(this, "错误", "两次输入的新密码不一致");
+        return;
+    }
+
+    if (oldPass == newPass) {
+        QMessageBox::warning(this, "提示", "新密码不能与旧密码相同");
+        return;
+    }
+
+    //发送网络请求
+    QJsonObject req;
+    req["type"] = "change_password";
+    req["user_id"] = m_userId;
+    req["old_pass"] = oldPass;
+    req["new_pass"] = newPass;
+
+    NetworkClient::instance().sendRequest(req);
 }
