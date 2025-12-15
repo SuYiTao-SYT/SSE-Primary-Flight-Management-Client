@@ -10,6 +10,8 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include "DataTypes.h"
+#include <QDate>
+#include <QCalendarWidget>
 
 class MainWindow : public QMainWindow
 {
@@ -46,6 +48,10 @@ private:
     void initFlightListPage(); // Page 3: 航班列表页
     void initPersonalCenterPage(); // Page 4: 个人中心页
 
+    // 辅助函数
+    void updateDateBar();  
+    void doSearchFlights();
+
     
     // 重新根据 m_airportCache 渲染城市列表
     void renderCityList();
@@ -62,14 +68,20 @@ private:
     // 查询主页控件
     QPushButton *m_btnSrcCity;  // 显示当前选中的出发地
     QPushButton *m_btnDestCity; // 显示当前选中的目的地
-
+    QPushButton *m_btnDate; 
+    QDate m_selectedDate;
     // 城市选择页控件
     QWidget *m_cityListContainer; // 放城市按钮的容器
     QMap<QString, QLabel*> m_letterLabels;
     QScrollArea *m_cityScrollArea; // 首字母跳转
 
     // 航班列表页控件
-    QWidget *m_flightListContainer;
+    QWidget *m_flightListContainer; 
+    QWidget *m_dateBarContainer; 
+
+    // 缓存查询条件
+    QString m_lastSrcCity;  
+    QString m_lastDestCity;
 
     // 个人中心页控件
     // 需要保存这个指针，以便在进入个人中心时更新 "当前账号: xxx"

@@ -127,17 +127,48 @@ void MainWindow::initSearchHomePage()
     QLabel *lblDest = new QLabel("到达城市");
     lblDest->setStyleSheet("color: #888; font-size: 12px; margin-left: 10px;");
 
+    // 初始化当前日期
+    m_selectedDate = QDate::currentDate();
+
+    // 创建按钮
+    m_btnDate = new QPushButton(m_selectedDate.toString("yyyy-MM-dd"));
+    m_btnDate->setStyleSheet("text-align: left; font-size: 20px; font-weight: bold; padding: 10px; border: none;");
+    QLabel *lblDate = new QLabel("出发日期");
+    lblDate->setStyleSheet("color: #888; font-size: 12px; margin-left: 10px;");
+    // 点击按钮弹出日历
+    connect(m_btnDate, &QPushButton::clicked, this, [this](){
+        // 创建一个悬浮的日历控件
+        QCalendarWidget *calendar = new QCalendarWidget(this);
+        calendar->setWindowFlags(Qt::Popup); // 关键：设为 Popup 模式，点外部自动关闭
+    
+        // 设置选中当前已选的日期
+        calendar->setSelectedDate(m_selectedDate);
+        calendar->resize(300, 250);
+        QPoint pos = m_btnDate->mapToGlobal(QPoint(0, m_btnDate->height()));
+        calendar->move(pos);
+        // 显示日历
+        calendar->show();
+        // 当用户点击日历上的某个日期时
+        connect(calendar, &QCalendarWidget::clicked, this, [this, calendar](const QDate &date){
+            m_selectedDate = date; // 更新变量
+            m_btnDate->setText(date.toString("yyyy-MM-dd")); // 更新按钮文字
+            calendar->close(); // 关闭日历
+            calendar->deleteLater(); // 销毁内存
+        });
+    });
+
     // 分割线
-    QFrame *line = new QFrame();
-    line->setFrameShape(QFrame::HLine);
-    line->setStyleSheet("color: #eee;");
+    QFrame *line1 = new QFrame(); line1->setFrameShape(QFrame::HLine); line1->setStyleSheet("color: #eee;");
+    QFrame *line2 = new QFrame(); line2->setFrameShape(QFrame::HLine); line2->setStyleSheet("color: #eee;");
 
     boxLayout->addWidget(lblSrc);
     boxLayout->addWidget(m_btnSrcCity);
-    boxLayout->addWidget(line);
+    boxLayout->addWidget(line1);
     boxLayout->addWidget(lblDest);
     boxLayout->addWidget(m_btnDestCity);
-
+    boxLayout->addWidget(line2);
+    boxLayout->addWidget(lblDate); 
+    boxLayout->addWidget(m_btnDate);
     layout->addWidget(box);
     layout->addSpacing(30);
 
@@ -208,7 +239,7 @@ void MainWindow::initFlightListPage()
     QWidget *page = new QWidget();
     QVBoxLayout *layout = new QVBoxLayout(page);
 
-    // 顶部导航栏
+    // 顶部导航栏 
     QWidget *navBar = new QWidget();
     navBar->setStyleSheet("background: #f8f8f8; border-bottom: 1px solid #ddd;");
     QHBoxLayout *navLayout = new QHBoxLayout(navBar);
@@ -216,34 +247,87 @@ void MainWindow::initFlightListPage()
     QPushButton *btnBack = new QPushButton("<- 返回");
     btnBack->setStyleSheet("border: none; color: #0078d7; font-weight: bold;");
     connect(btnBack, &QPushButton::clicked, this, [this](){
+        m_btnDate->setText(m_selectedDate.toString("yyyy-MM-dd"));
         m_stackedWidget->setCurrentIndex(1); 
     });
-    
     QLabel *title = new QLabel("航班结果");
     title->setAlignment(Qt::AlignCenter);
-
     navLayout->addWidget(btnBack);
     navLayout->addWidget(title);
     navLayout->addStretch();
+
+    // 日期选择栏 
+    m_dateBarContainer = new QWidget();
+    m_dateBarContainer->setFixedHeight(60); // 固定高度
+    m_dateBarContainer->setStyleSheet("background: white; border-bottom: 1px solid #eee;");
+    // updateDateBar() 函数动态生成
     
+    QHBoxLayout *dateLayout = new QHBoxLayout(m_dateBarContainer);
+    dateLayout->setContentsMargins(0, 0, 0, 0);
+    dateLayout->setSpacing(0);
+
+    // 滚动列表
     QScrollArea *flightScroll = new QScrollArea(); 
     flightScroll->setWidgetResizable(true);
     flightScroll->setStyleSheet("QScrollArea { border: none; background: #f0f2f5; }");
-    // 卡片容器
+    
     m_flightListContainer = new QWidget();
     QVBoxLayout *cardLayout = new QVBoxLayout(m_flightListContainer);
     cardLayout->setAlignment(Qt::AlignTop);
     cardLayout->setSpacing(10);
-    
-    // 使用局部变量
     flightScroll->setWidget(m_flightListContainer);
 
+    // 组装
     layout->addWidget(navBar);
-    layout->addWidget(flightScroll); // 添加局部变量
+    layout->addWidget(m_dateBarContainer);
+    layout->addWidget(flightScroll);
 
     m_stackedWidget->addWidget(page);
 }
+void MainWindow::updateDateBar()
+{
+    // 获取现有的布局
+    QHBoxLayout *layout = qobject_cast<QHBoxLayout*>(m_dateBarContainer->layout());
+    
+    if(layout){
+        QLayoutItem *item;
+        while ((item = layout->takeAt(0)) != nullptr) {
+            delete item->widget(); // 删除按钮控件
+            delete item;           // 删除布局项
+        }
+    }
 
+    // 循环生成 -3 到 +3 天
+    for (int i = -3; i <= 3; ++i) {
+        QDate date = m_selectedDate.addDays(i);
+        
+        QPushButton *btn = new QPushButton();
+        btn->setFlat(true);
+        btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        
+        QString dayStr = date.toString("MM-dd");
+        QString weekStr = date.toString("ddd"); 
+        static const QString weeks[] = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
+        weekStr = weeks[date.dayOfWeek() - 1];
+
+        btn->setText(dayStr + "\n" + weekStr);
+
+        if (i == 0) {
+            btn->setStyleSheet("QPushButton { background-color: #0078d7; color: white; border: none; font-weight: bold; font-size: 14px; }");
+        } else {
+            btn->setStyleSheet("QPushButton { background-color: white; color: #333; border: none; font-size: 12px; } QPushButton:hover { background-color: #f0f8ff; }");
+        }
+
+        // 添加到现有布局中
+        layout->addWidget(btn);
+
+        connect(btn, &QPushButton::clicked, this, [this, date](){
+            m_selectedDate = date; 
+            updateDateBar(); 
+            doSearchFlights(); 
+        });
+    }
+}
 // Page 4: 个人中心页
 void MainWindow::initPersonalCenterPage()
 {
@@ -483,16 +567,28 @@ void MainWindow::onCitySelected(const QString &cityName)
 
 void MainWindow::onSearchClicked()
 {
-    QString src = m_btnSrcCity->text();
-    QString dest = m_btnDestCity->text();
+    // 保存当前的查询条件 
+    m_lastSrcCity = m_btnSrcCity->text();
+    m_lastDestCity = m_btnDestCity->text();
+    
+    updateDateBar();
+
+    doSearchFlights();
+}
+void MainWindow::doSearchFlights()
+{
+    QString dateStr = m_selectedDate.toString("yyyy-MM-dd");
 
     QJsonObject req;
     req["type"] = "search_flights";
-    req["src_city"] = src;
-    req["dest_city"] = dest;
+    req["src_city"] = m_lastSrcCity;   // 使用缓存的城市
+    req["dest_city"] = m_lastDestCity; // 使用缓存的城市
+    req["date"] = dateStr;             // 使用当前的日期
+
+    qDebug() << "Searching:" << m_lastSrcCity << "to" << m_lastDestCity << "on" << dateStr;
+
     NetworkClient::instance().sendRequest(req);
 }
-
 void MainWindow::onBuyTicket(int flightId) {
     // 保持之前的逻辑不变
      QJsonObject req;
@@ -505,18 +601,22 @@ void MainWindow::onBuyTicket(int flightId) {
 // 数据处理
 void MainWindow::onDataReceived(const QJsonObject &json)
 {
-    QString type = json["type"].toString();
+    QJsonDocument doc(json);
+    qDebug().noquote() << "[RECV] Formatted JSON:\n" 
+                       << doc.toJson(QJsonDocument::Indented);
 
+    QString type = json["type"].toString();
+    
     if (type == "get_airports_res") {
         QJsonArray arr = json["data"].toArray();
         m_airportCache.clear();
         for (const auto &val : arr) {
             QJsonObject obj = val.toObject();
             AirportInfo info;
-            info.iata = obj["iata"].toString();
-            info.city = obj["city"].toString();
-            info.name = obj["name"].toString();
-            info.pinyin = obj["pinyin"].toString(); // 读取拼音
+            info.iata = obj["iata_code"].toString();
+            info.city = obj["city_name"].toString();
+            info.name = obj["airport_name"].toString();
+            info.pinyin = obj["city_pinyin"].toString();
             m_airportCache.insert(info.iata, info);
         }
         // 渲染城市列表
@@ -524,7 +624,7 @@ void MainWindow::onDataReceived(const QJsonObject &json)
     }
     else if (type == "login_res") {
         if (json["result"].toBool()) {
-            m_userId = json["user_id"].toInt();
+            m_userId = json["user_id"].toString().toInt();
             m_stackedWidget->setCurrentIndex(1); // 登录成功去主页
         } else {
             QMessageBox::warning(this, "Error", json["message"].toString());
@@ -537,7 +637,7 @@ void MainWindow::onDataReceived(const QJsonObject &json)
         qDeleteAll(m_flightListContainer->findChildren<QWidget*>(Qt::FindDirectChildrenOnly));
         QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(m_flightListContainer->layout());
 
-        QJsonArray flights = json["flights"].toArray();
+        QJsonArray flights = json["data"].toArray();
         if (flights.isEmpty()) {
             QLabel *empty = new QLabel("暂无航班");
             empty->setAlignment(Qt::AlignCenter);
