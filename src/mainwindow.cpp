@@ -680,7 +680,7 @@ void MainWindow::onDataReceived(const QJsonObject &json)
             onSearchClicked(); 
             
         } else {
-            QMessageBox::warning(this, "失败", "购票失败: " + msg);
+            QMessageBox::warning(this, "失败", "" + msg);
         }
     }
     else if (type == "change_password_res") {

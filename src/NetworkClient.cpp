@@ -35,6 +35,9 @@ void NetworkClient::connectToServer(const QString &ip, quint16 port)
 
 void NetworkClient::sendRequest(const QJsonObject &json)
 {
+    QJsonDocument doc(json);
+    qDebug().noquote() << "[REQU] Formatted JSON:\n" 
+                       << doc.toJson(QJsonDocument::Indented);
     if (m_socket->state() != QAbstractSocket::ConnectedState) {
         qDebug() << "Error: Not connected to server.";
         return;
