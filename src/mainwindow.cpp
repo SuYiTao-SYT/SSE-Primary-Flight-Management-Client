@@ -624,7 +624,7 @@ void MainWindow::onDataReceived(const QJsonObject &json)
     }
     else if (type == "login_res") {
         if (json["result"].toBool()) {
-            m_userId = json["user_id"].toString().toInt();
+            m_userId = json["user_id"].toVariant().toInt();
             m_stackedWidget->setCurrentIndex(1); // 登录成功去主页
         } else {
             QMessageBox::warning(this, "Error", json["message"].toString());
