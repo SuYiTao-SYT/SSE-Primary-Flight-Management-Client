@@ -1,6 +1,8 @@
 #include "MainWindow.h"
 #include "NetworkClient.h"
 #include "FlightItem.h"
+#include "OrderItem.h"
+#include "DataTypes.h"
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QGridLayout>
@@ -12,7 +14,7 @@
 #include <QJsonArray>
 #include <QScrollBar>
 #include <QGroupBox>
-#include <QDateTime>
+#include <QWidget>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -39,6 +41,7 @@ void MainWindow::setupUi()
     initCitySelectPage();  // Index 2
     initFlightListPage();  // Index 3
     initPersonalCenterPage(); // Index 4
+    initOrderListPage(); // Index 5
 
     m_stackedWidget->setCurrentIndex(0);
 }
@@ -365,6 +368,12 @@ void MainWindow::initPersonalCenterPage()
     m_lblCenterUser->setAlignment(Qt::AlignCenter);
     m_lblCenterUser->setStyleSheet("font-size: 18px; color: #555; font-weight: bold;");
 
+    QPushButton *btnMyOrders = new QPushButton("我的订单");
+    btnMyOrders->setFixedHeight(45);
+    btnMyOrders->setStyleSheet("background-color: white; border: 1px solid #ddd; border-radius: 5px; color: #333; font-size: 16px;");
+    
+    connect(btnMyOrders, &QPushButton::clicked, this, &MainWindow::onMyOrdersClicked);
+
     //修改密码按钮
     QPushButton *btnChangePwd = new QPushButton("修改密码");
     btnChangePwd->setFixedHeight(45);
@@ -435,6 +444,8 @@ void MainWindow::initPersonalCenterPage()
     contentLayout->addWidget(avatar, 0, Qt::AlignHCenter);
     contentLayout->addWidget(m_lblCenterUser);
     contentLayout->addSpacing(30);
+    
+    contentLayout->addWidget(btnMyOrders);
     contentLayout->addWidget(btnChangePwd);
     contentLayout->addWidget(btnBack);
     contentLayout->addStretch();
@@ -443,7 +454,55 @@ void MainWindow::initPersonalCenterPage()
 
     m_stackedWidget->addWidget(page);
 }
+// Page 5: 我的订单页
+void MainWindow::initOrderListPage()
+{
+    QWidget *page = new QWidget();
+    QVBoxLayout *layout = new QVBoxLayout(page);
+    layout->setContentsMargins(0, 0, 0, 0);
 
+    // 顶部导航栏
+    QWidget *navBar = new QWidget();
+    navBar->setStyleSheet("background: #f8f8f8; border-bottom: 1px solid #ddd;");
+    navBar->setFixedHeight(50);
+    QHBoxLayout *navLayout = new QHBoxLayout(navBar);
+    
+    QPushButton *btnBack = new QPushButton("<- 返回");
+    btnBack->setStyleSheet("border: none; color: #0078d7; font-weight: bold; font-size: 16px;");
+    
+    // 点击返回，回到个人中心 (Index 4)
+    connect(btnBack, &QPushButton::clicked, this, [this](){
+        m_stackedWidget->setCurrentIndex(4); 
+    });
+
+    QLabel *title = new QLabel("我的订单");
+    title->setStyleSheet("font-size: 18px; font-weight: bold; color: #333;");
+    title->setAlignment(Qt::AlignCenter);
+
+    navLayout->addWidget(btnBack);
+    navLayout->addWidget(title);
+    navLayout->addStretch(); 
+
+    // 滚动列表
+    QScrollArea *scrollArea = new QScrollArea();
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setStyleSheet("QScrollArea { border: none; background: #f0f2f5; }");
+
+    m_orderListContainer = new QWidget();
+    // 这里的布局用来垂直排列订单卡片
+    QVBoxLayout *listLayout = new QVBoxLayout(m_orderListContainer);
+    listLayout->setAlignment(Qt::AlignTop);
+    listLayout->setSpacing(15);
+    listLayout->setContentsMargins(15, 15, 15, 15);
+
+    scrollArea->setWidget(m_orderListContainer);
+
+    // 组装
+    layout->addWidget(navBar);
+    layout->addWidget(scrollArea);
+
+    m_stackedWidget->addWidget(page);
+}
 
 //核心逻辑部分
 
@@ -694,6 +753,61 @@ void MainWindow::onDataReceived(const QJsonObject &json)
             QMessageBox::critical(this, "失败", msg);
         }
     }
+    else if (type == "my_orders_res") {
+        // 切换页面
+        m_stackedWidget->setCurrentIndex(5);
+
+        // 清空旧列表
+        qDeleteAll(m_orderListContainer->findChildren<QWidget*>(Qt::FindDirectChildrenOnly));
+        QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(m_orderListContainer->layout());
+
+        // 拿到数据数组
+        QJsonArray arr = json["data"].toArray();
+
+        // 处理空数据
+        if (arr.isEmpty()) {
+            QLabel *empty = new QLabel("暂无订单记录");
+            empty->setAlignment(Qt::AlignCenter);
+            empty->setStyleSheet("color: #888; margin-top: 50px;");
+            layout->addWidget(empty);
+            return;
+        }
+
+        // 循环创建组件 (核心逻辑)
+        for (const auto &val : arr) {
+            QJsonObject obj = val.toObject();
+
+            // 填充结构体
+            OrderInfo info;
+            info.orderId = obj["order_id"].toInt();
+            info.flightNo = obj["flight_no"].toString();
+
+            QString srcCode = obj["src"].toString();
+            QString destCode = obj["dest"].toString();
+            
+            if (m_airportCache.contains(srcCode)) {
+                info.srcCity = m_airportCache[srcCode].city;  // e.g. "北京"
+                info.srcAirport = m_airportCache[srcCode].name; // e.g. "首都国际机场"
+            } else {
+                info.srcCity = srcCode;
+                info.srcAirport = srcCode;
+            }
+
+            if (m_airportCache.contains(destCode)) {
+                info.destCity = m_airportCache[destCode].city; // e.g. "上海"
+                info.destAirport = m_airportCache[destCode].name; // e.g. "虹桥国际机场"
+            } else {
+                info.destCity = destCode;
+                info.destAirport = destCode;
+            }
+
+            info.depTime = obj["dep_time"].toString();
+            info.price = obj["price"].toDouble();
+
+            OrderItem *item = new OrderItem(info);
+            layout->addWidget(item);
+        }
+    }
 }
 
 void MainWindow::onLoginClicked() {
@@ -780,5 +894,16 @@ void MainWindow::handlePasswordChange(const QString &oldPass, const QString &new
     req["old_pass"] = oldPass;
     req["new_pass"] = newPass;
 
+    NetworkClient::instance().sendRequest(req);
+}
+
+void MainWindow::onMyOrdersClicked()
+{
+    // 发送请求
+    QJsonObject req;
+    req["type"] = "my_orders";
+    req["user_id"] = m_userId;
+    
+    qDebug() << "Fetching orders for user:" << m_userId;
     NetworkClient::instance().sendRequest(req);
 }

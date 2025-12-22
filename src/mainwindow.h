@@ -39,7 +39,9 @@ private slots:
     void onSelectDestCity(); // 点击“选择目的地”
     void onCitySelected(const QString &cityName); // 在列表里选中了某个城市
     void onIndexLetterClicked(const QString &letter); // 点击右侧索引条
-
+    
+    // 我的订单界面相关
+    void onMyOrdersClicked(); // 进入我的订单界面
 private:
     void setupUi();
     void initLoginPage();      // Page 0
@@ -47,6 +49,7 @@ private:
     void initCitySelectPage(); // Page 2: 城市选择页
     void initFlightListPage(); // Page 3: 航班列表页
     void initPersonalCenterPage(); // Page 4: 个人中心页
+    void initOrderListPage(); // Page 5: 我的订单
 
     // 辅助函数
     void updateDateBar();  
@@ -86,7 +89,7 @@ private:
     // 个人中心页控件
     // 需要保存这个指针，以便在进入个人中心时更新 "当前账号: xxx"
     QLabel *m_lblCenterUser; 
-
+    QWidget *m_orderListContainer;
 
     int m_userId = -1;
     QMap<QString, AirportInfo> m_airportCache;

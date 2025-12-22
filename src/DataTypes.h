@@ -23,4 +23,15 @@ struct FlightInfo {
     int ticketsLeft;
 };
 
+struct OrderInfo {
+    int orderId;
+    QString flightNo;
+    QString srcCity;
+    QString destCity;
+    QString depTime;
+    QString srcAirport; 
+    QString destAirport;
+    double price;
+};
+
 #endif

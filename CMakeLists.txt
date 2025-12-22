@@ -22,6 +22,8 @@ set(PROJECT_SOURCES
         src/NetworkClient.h
         src/FlightItem.cpp
         src/FlightItem.h
+        src/OrderItem.h
+        src/OrderItem.cpp
         ${TS_FILES}
 )
 
